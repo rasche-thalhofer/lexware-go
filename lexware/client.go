@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rasche-thalhofer/lexware-go/types"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -21,13 +22,17 @@ const (
 
 	// DefaultTimeout is the default timeout for HTTP requests.
 	DefaultTimeout = 30 * time.Second
+
+	// DefaultRateLimit is the default rate limit (requests per second).
+	DefaultRateLimit = 2
 )
 
 // Client is the main entry point to the Lexware API.
 type Client struct {
-	baseURL    string
-	apiKey     string
-	httpClient *http.Client
+	baseURL     string
+	apiKey      string
+	httpClient  *http.Client
+	rateLimiter *rate.Limiter
 
 	articles            ArticlesInterface
 	contacts            ContactsInterface
@@ -57,6 +62,9 @@ type Config struct {
 	APIKey     string
 	HTTPClient *http.Client
 	Timeout    time.Duration
+	// RateLimit specifies the maximum requests per second. Defaults to DefaultRateLimit (2).
+	// Set to 0 or negative to disable rate limiting.
+	RateLimit float64
 }
 
 // NewClient creates a new Lexware API client with the given API key.
@@ -84,10 +92,21 @@ func NewClientWithConfig(config Config) (*Client, error) {
 		httpClient = &http.Client{Timeout: timeout}
 	}
 
+	// Set up rate limiter
+	var rateLimiter *rate.Limiter
+	rateLimit := config.RateLimit
+	if rateLimit == 0 {
+		rateLimit = DefaultRateLimit
+	}
+	if rateLimit > 0 {
+		rateLimiter = rate.NewLimiter(rate.Limit(rateLimit), 1)
+	}
+
 	client := &Client{
-		baseURL:    baseURL,
-		apiKey:     config.APIKey,
-		httpClient: httpClient,
+		baseURL:     baseURL,
+		apiKey:      config.APIKey,
+		httpClient:  httpClient,
+		rateLimiter: rateLimiter,
 	}
 
 	client.articles = &articlesClient{client: client}
@@ -136,6 +155,13 @@ func (c *Client) VoucherList() VoucherListInterface                 { return c.v
 func (c *Client) Vouchers() VouchersInterface                       { return c.vouchers }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}) ([]byte, error) {
+	// Apply rate limiting
+	if c.rateLimiter != nil {
+		if err := c.rateLimiter.Wait(ctx); err != nil {
+			return nil, fmt.Errorf("rate limiter wait failed: %w", err)
+		}
+	}
+
 	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)
@@ -175,6 +201,13 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 }
 
 func (c *Client) doRequestRaw(ctx context.Context, method, path string, body interface{}, headers map[string]string) (*http.Response, error) {
+	// Apply rate limiting
+	if c.rateLimiter != nil {
+		if err := c.rateLimiter.Wait(ctx); err != nil {
+			return nil, fmt.Errorf("rate limiter wait failed: %w", err)
+		}
+	}
+
 	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)

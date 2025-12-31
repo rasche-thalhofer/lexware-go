@@ -9,7 +9,7 @@ A Go client library for the [Lexware API](https://api.lexware.io). This library 
 - 🚀 **Easy initialization** - Simple client creation with just an API key
 - 📦 **Kubernetes client-go style** - Familiar patterns for K8s developers
 - 🔄 **Context support** - All methods accept `context.Context` for cancellation and timeouts
-- ⚡ **Rate limiting awareness** - Built-in error handling for rate limits
+- ⚡ **Built-in rate limiting** - Global rate limiter (default: 2 req/s) to prevent API throttling
 
 ## Installation
 
@@ -125,6 +125,29 @@ client, err := lexware.NewClientWithConfig(lexware.Config{
     HTTPClient: httpClient,
 })
 ```
+
+### Rate Limiting
+
+The client includes a global rate limiter that defaults to **2 requests per second**. This helps avoid hitting the Lexware API rate limits.
+
+```go
+// Default: 2 requests per second
+client, err := lexware.NewClient("your-api-key")
+
+// Custom rate limit: 5 requests per second
+client, err := lexware.NewClientWithConfig(lexware.Config{
+    APIKey:    "your-api-key",
+    RateLimit: 5,
+})
+
+// Disable rate limiting (use with caution)
+client, err := lexware.NewClientWithConfig(lexware.Config{
+    APIKey:    "your-api-key",
+    RateLimit: -1,
+})
+```
+
+The rate limiter uses a token bucket algorithm and respects context cancellation. If a request is cancelled while waiting for rate limit capacity, the error will be returned immediately.
 
 ## Available Endpoints
 
