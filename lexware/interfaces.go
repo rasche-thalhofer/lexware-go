@@ -81,8 +81,7 @@ type InvoicesInterface interface {
 	Create(ctx context.Context, invoice *types.InvoiceCreateRequest, finalize bool) (*types.ActionResult, error)
 	Get(ctx context.Context, id string) (*types.Invoice, error)
 	Pursue(ctx context.Context, precedingSalesVoucherID string, invoice *types.InvoiceCreateRequest, finalize bool) (*types.ActionResult, error)
-	RenderDocument(ctx context.Context, id string) error
-	DownloadDocument(ctx context.Context, id string) (io.ReadCloser, error)
+	DownloadFile(ctx context.Context, id string) (io.ReadCloser, error)
 }
 
 // OrderConfirmationsInterface provides methods for managing order confirmations.
