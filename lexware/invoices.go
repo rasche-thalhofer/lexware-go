@@ -56,13 +56,8 @@ func (c *invoicesClient) Pursue(ctx context.Context, precedingSalesVoucherID str
 	return &result, nil
 }
 
-func (c *invoicesClient) RenderDocument(ctx context.Context, id string) error {
-	_, err := c.client.doRequest(ctx, "GET", "/v1/invoices/"+id+"/document", nil)
-	return err
-}
-
-func (c *invoicesClient) DownloadDocument(ctx context.Context, id string) (io.ReadCloser, error) {
-	resp, err := c.client.doRequestRaw(ctx, "GET", "/v1/invoices/"+id+"/document", nil, map[string]string{"Accept": "application/pdf"})
+func (c *invoicesClient) DownloadFile(ctx context.Context, id string) (io.ReadCloser, error) {
+	resp, err := c.client.doRequestRaw(ctx, "GET", "/v1/invoices/"+id+"/file", nil, map[string]string{"Accept": "application/pdf"})
 	if err != nil {
 		return nil, err
 	}
